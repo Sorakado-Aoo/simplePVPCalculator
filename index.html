@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/vue"></script>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <title>简单的基于最大加成的PVP分数计算</title>
+</head>
+
+<body>
+    <div id="app">
+        <p>有效属性:</p>
+        <el-checkbox-group v-model="calculateGroup" size="mini">
+            <el-checkbox style="margin: 10px;" v-for="(v,k) in CTYPE" :label="k" border>{{v}}</el-checkbox>
+        </el-checkbox-group>
+        <div style="margin: 20px 0; width: 300px;">
+            <el-input size="mini" v-model="baseData[TYPEFIELDS.attack]">
+                <template slot="prepend">基础攻击:</template>
+            </el-input>
+        </div>
+        <div style="margin: 20px 0;" v-if="calculateGroup.indexOf(TYPEFIELDS.healthPoint) > -1">
+            <el-checkbox v-model="hutaoEquivalent" border size="mini">胡桃E技能攻击等效到大生命</el-checkbox>
+            <template v-if="hutaoEquivalent">
+              <el-radio style="margin: 10px;" v-model="hutaoElevel" label="10">10级E</el-radio>
+              <el-radio style="margin: 10px;" v-model="hutaoElevel" label="13">13级E</el-radio>
+            </template>
+            <div style="margin: 20px 0; width: 300px;">
+                <el-input size="mini" v-model="baseData[TYPEFIELDS.healthPoint]">
+                    <template slot="prepend">基础生命:</template>
+                </el-input>
+            </div>
+        </div>
+        <div style="margin: 20px 0; width: 300px;" v-if="calculateGroup.indexOf(TYPEFIELDS.defense) > -1">
+            <el-input size="mini" v-model="baseData[TYPEFIELDS.defense]">
+                <template slot="prepend">基础防御:</template>
+            </el-input>
+        </div>
+        <el-tabs v-model="model" style="margin-top: 30px;">
+            <el-tab-pane label="总体圣遗物" name="panel">
+                <div style="margin: 20px 0;">
+                    表:
+                    <el-select size="mini" v-model="sHGTYPE">
+                        <el-option v-for="item in HGTYPE" :key="'sHGTYPE'+item" :label="TTYPE[item]" :value="item">
+                        </el-option>
+                    </el-select>
+                </div>
+                <div style="margin: 20px 0;">
+                    杯子:
+                    <el-select size="mini" v-model="sCPTYPE">
+                        <el-option v-for="item in CPTYPE" :key="'sCPTYPE'+item" :label="TTYPE[item]" :value="item">
+                        </el-option>
+                    </el-select>
+                </div>
+                <div style="margin: 20px 0;">
+                    头:
+                    <el-select size="mini" v-model="sHDTYPE">
+                        <el-option v-for="item in HDTYPE" :key="'sHDTYPE'+item" :label="TTYPE[item]" :value="item">
+                        </el-option>
+                    </el-select>
+                </div>
+                <div style="margin: 20px 0; width: 300px;">
+                    <el-input size="mini" v-model="panelData[TYPEFIELDS.attack]">
+                        <template slot="prepend">攻击:</template>
+                    </el-input>
+                </div>
+                <div style="margin: 20px 0; width: 300px;" v-if="calculateGroup.indexOf(TYPEFIELDS.defense) > -1">
+                    <el-input size="mini" v-model="panelData[TYPEFIELDS.defense]">
+                        <template slot="prepend">防御:</template>
+                    </el-input>
+                </div>
+                <div style="margin: 20px 0; width: 300px;" v-if="calculateGroup.indexOf(TYPEFIELDS.healthPoint) > -1">
+                    <el-input size="mini" v-model="panelData[TYPEFIELDS.healthPoint]">
+                        <template slot="prepend">生命:</template>
+                    </el-input>
+                </div>
+                <div style="margin: 20px 0; width: 300px;" v-if="calculateGroup.indexOf(TYPEFIELDS.elementalMystery) > -1">
+                    <el-input size="mini" v-model="panelData[TYPEFIELDS.elementalMystery]">
+                        <template slot="prepend">精通:</template>
+                    </el-input>
+                </div>
+                <div style="margin: 20px 0; width: 300px;" v-if="calculateGroup.indexOf(TYPEFIELDS.elementCharging) > -1">
+                    <el-input size="mini" v-model="panelData[TYPEFIELDS.elementCharging]">
+                        <template slot="prepend">充能:</template>
+                    </el-input>
+                </div>
+                <div style="margin: 20px 0; width: 300px;" v-if="calculateGroup.indexOf(TYPEFIELDS.criticalRate) > -1">
+                    <el-input size="mini" v-model="panelData[TYPEFIELDS.criticalRate]">
+                        <template slot="prepend">暴击率:</template>
+                    </el-input>
+                </div>
+                <div style="margin: 20px 0; width: 300px;" v-if="calculateGroup.indexOf(TYPEFIELDS.criticalDamage) > -1">
+                    <el-input size="mini" v-model="panelData[TYPEFIELDS.criticalDamage]">
+                        <template slot="prepend">爆伤:</template>
+                    </el-input>
+                </div>
+                <div style="margin: 20px 0;">
+                    <el-button type="primary" @click="calculatePanel">计算</el-button>
+                </div>
+                <p v-html="resultStr"></p>
+            </el-tab-pane>
+            <el-tab-pane label="单件圣遗物" name="single">下次再摸</el-tab-pane>
+        </el-tabs>
+    </div>
+    <script>
+        const TYPEFIELDS = {
+            healthPoint: 'healthPoint',
+            healthPointPercentage: 'healthPointPercentage',
+            defense: 'defense',
+            defensePercentage: 'defensePercentage',
+            attack: 'attack',
+            attackPercentage: 'attackPercentage',
+            elementalMystery: 'elementalMystery',
+            elementalDamage: 'elementalDamage',
+            elementCharging: 'elementCharging',
+            criticalRate: 'criticalRate',
+            criticalDamage: 'criticalDamage',
+            physicalDamage: 'physicalDamage',
+            curePercentage: 'curePercentage',
+            healthPointEquivalentPercentage: 'healthPointEquivalentPercentage'
+        }
+        const HUTAOE = {
+            '10': 0.0626,
+            '13': 0.0715
+        }
+        const CTYPE = {
+            [TYPEFIELDS.attack]: "攻击",
+            [TYPEFIELDS.healthPoint]: "生命",
+            [TYPEFIELDS.defense]: "防御",
+            [TYPEFIELDS.elementalMystery]: "精通",
+            [TYPEFIELDS.elementCharging]: "充能",
+            [TYPEFIELDS.criticalRate]: "暴击率",
+            [TYPEFIELDS.criticalDamage]: "暴伤"
+        }
+        const TTYPE = {
+            ...CTYPE,
+            [TYPEFIELDS.healthPointPercentage]: "大生命",
+            [TYPEFIELDS.defensePercentage]: "大防御",
+            [TYPEFIELDS.attackPercentage]: "大攻击",
+            [TYPEFIELDS.elementalDamage]: "元素伤害",
+            [TYPEFIELDS.physicalDamage]: "物理伤害",
+            [TYPEFIELDS.curePercentage]: "治疗加成",
+            [TYPEFIELDS.healthPointEquivalentPercentage]: "攻击等效转换大生命"
+        }
+        const TWOPIECES = {
+            [TYPEFIELDS.attackPercentage]: 18,
+            [TYPEFIELDS.elementalDamage]: 15,
+            [TYPEFIELDS.healthPointPercentage]: 20,
+        }
+        const MAXMAIN = {
+            [TYPEFIELDS.healthPointPercentage]: 46.6,
+            [TYPEFIELDS.healthPoint]: 4780,
+            [TYPEFIELDS.defensePercentage]: 58.3,
+            [TYPEFIELDS.attackPercentage]: 46.6,
+            [TYPEFIELDS.attack]: 311,
+            [TYPEFIELDS.elementalMystery]: 187,
+            [TYPEFIELDS.elementCharging]: 51.8,
+            [TYPEFIELDS.criticalRate]: 31.1,
+            [TYPEFIELDS.criticalDamage]: 62.2,
+            [TYPEFIELDS.elementalDamage]: 46.6,
+            [TYPEFIELDS.physicalDamage]: 58.3,
+            [TYPEFIELDS.curePercentage]: 35.9
+        }
+        const MAXUP = {
+            [TYPEFIELDS.healthPointPercentage]: 35 / 6,
+            [TYPEFIELDS.healthPoint]: 1793 / 6,
+            [TYPEFIELDS.defensePercentage]: 43.7 / 6,
+            [TYPEFIELDS.defense]: 140 / 6,
+            [TYPEFIELDS.attackPercentage]: 35 / 6,
+            [TYPEFIELDS.attack]: 117 / 6,
+            [TYPEFIELDS.elementalMystery]: 140 / 6,
+            [TYPEFIELDS.elementCharging]: 38.9 / 6,
+            [TYPEFIELDS.criticalRate]: 23.3 / 6,
+            [TYPEFIELDS.criticalDamage]: 46.6 / 6,
+        }
+        const HGTYPE = [TYPEFIELDS.healthPointPercentage, TYPEFIELDS.defensePercentage, TYPEFIELDS.attackPercentage, TYPEFIELDS.elementalMystery, TYPEFIELDS.elementCharging];
+        const CPTYPE = [TYPEFIELDS.healthPointPercentage, TYPEFIELDS.defensePercentage, TYPEFIELDS.attackPercentage, TYPEFIELDS.elementalMystery, TYPEFIELDS.elementalDamage, TYPEFIELDS.physicalDamage];
+        const HDTYPE = [TYPEFIELDS.healthPointPercentage, TYPEFIELDS.defensePercentage, TYPEFIELDS.attackPercentage, TYPEFIELDS.elementalMystery, TYPEFIELDS.criticalRate, TYPEFIELDS.criticalDamage, TYPEFIELDS.curePercentage];
+        const numToPercentageMap = {
+            [TYPEFIELDS.attack]: TYPEFIELDS.attackPercentage,
+            [TYPEFIELDS.healthPoint]: TYPEFIELDS.healthPointPercentage,
+            [TYPEFIELDS.defense]: TYPEFIELDS.defensePercentage
+        }
+        const percentageToNumMap = {
+            [TYPEFIELDS.attackPercentage]: TYPEFIELDS.attack,
+            [TYPEFIELDS.healthPointPercentage]: TYPEFIELDS.healthPoint,
+            [TYPEFIELDS.defensePercentage]: TYPEFIELDS.defense
+        }
+        const baseList = [TYPEFIELDS.attack, TYPEFIELDS.healthPoint, TYPEFIELDS.defense]
+        const basePercentageList = [TYPEFIELDS.attackPercentage, TYPEFIELDS.healthPointPercentage, TYPEFIELDS.defensePercentage]
+        const validValue = num => {
+            if (num < -10) {
+                alert("输入有误");
+                return false;
+            }
+            return true;
+        }
+        var app = new Vue({
+            el: '#app',
+            data: {
+                resultStr: '',
+                hutaoEquivalent: true,
+                model: "panel",
+                hutaoElevel: '10',
+                TYPEFIELDS,
+                CTYPE,
+                TTYPE,
+                MAXUP,
+                MAXMAIN,
+                HGTYPE,
+                CPTYPE,
+                HDTYPE,
+                baseData: {
+                    [TYPEFIELDS.healthPoint]: 0,
+                    [TYPEFIELDS.defense]: 0,
+                    [TYPEFIELDS.attack]: 0
+                },
+                sHGTYPE: TYPEFIELDS.attackPercentage,
+                sCPTYPE: TYPEFIELDS.elementalDamage,
+                sHDTYPE: TYPEFIELDS.criticalRate,
+                panelData: {
+                    [TYPEFIELDS.healthPoint]: 0,
+                    [TYPEFIELDS.defense]: 0,
+                    [TYPEFIELDS.attack]: 0,
+                    [TYPEFIELDS.elementalMystery]: 0,
+                    [TYPEFIELDS.elementCharging]: 0,
+                    [TYPEFIELDS.criticalRate]: 0,
+                    [TYPEFIELDS.criticalDamage]: 0
+                },
+                singleData: {
+
+                },
+                calculateGroup: [TYPEFIELDS.criticalRate, TYPEFIELDS.criticalDamage]
+            },
+            methods: {
+                bulidRresult(resultObj) {
+                    let total = (Object.values(resultObj)).reduce((prev, curr) => prev + curr);
+                    for (let k in resultObj) {
+                        this.resultStr += `${TTYPE[k]}: ${resultObj[k].toFixed(1)} <br />`;
+                    }
+                    this.resultStr += `总分: ${total.toFixed(1)}`;
+                },
+                calculatePanel() {
+                    let main = [this.sHGTYPE, this.sCPTYPE, this.sHDTYPE];
+                    let mData = {};
+                    let bData = {};
+                    for (let k in this.panelData) {
+                        mData[k] = parseFloat(this.panelData[k]);
+                    }
+                    for (let k in this.baseData) {
+                        bData[k] = parseFloat(this.baseData[k]);
+                    }
+
+                    mData[TYPEFIELDS.attack] -= MAXMAIN[TYPEFIELDS.attack];
+                    if (this.calculateGroup.indexOf(TYPEFIELDS.healthPoint) > -1) {
+                        mData[TYPEFIELDS.healthPoint] -= MAXMAIN[TYPEFIELDS.healthPoint];
+                    }
+
+                    for (let i of main) {
+                        if (basePercentageList.indexOf(i) > -1) {
+                            if (bData.hasOwnProperty(percentageToNumMap[i]) && mData.hasOwnProperty(percentageToNumMap[i])) {
+                                mData[percentageToNumMap[i]] -= bData[percentageToNumMap[i]] * (MAXMAIN[i] / 100);
+                            } else {
+                                alert("输入有误");
+                                return;
+                            }
+                        } else if (mData.hasOwnProperty(i)) {
+                            mData[i] -= MAXMAIN[i];
+                        }
+                    }
+
+                    for (let k in mData) {
+                        if (!validValue(mData[k])) {
+                            return;
+                        }
+                    }
+
+                    let resultObj = {};
+                    for (let v of this.calculateGroup) {
+                        if (baseList.indexOf(v) > -1) {
+                            resultObj[numToPercentageMap[v]] = ((mData[v] / bData[v] * 100) / MAXUP[numToPercentageMap[v]]);
+                        } else {
+                            resultObj[v] = (mData[v] / MAXUP[v]);
+                        }
+                    }
+
+                    if (this.calculateGroup.indexOf(TYPEFIELDS.healthPoint) > -1 && this.hutaoEquivalent) {
+                        let maxhpAtk = bData[TYPEFIELDS.healthPoint] * (MAXUP[TYPEFIELDS.healthPointPercentage] / 100) * HUTAOE[this.hutaoElevel];
+                        resultObj[TYPEFIELDS.healthPointEquivalentPercentage] = mData[TYPEFIELDS.attack] / maxhpAtk;
+                    }
+
+                    this.bulidRresult(resultObj);
+                }
+            }
+        })
+    </script>
+</body>
+
+</html>
