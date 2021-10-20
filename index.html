@@ -15,7 +15,7 @@
     <div id="app">
         <p>有效属性:</p>
         <el-checkbox-group v-model="calculateGroup" size="mini">
-            <el-checkbox v-for="(v,k) in CTYPE" :label="k" border>{{v}}</el-checkbox>
+            <el-checkbox style="margin: 10px 0;" v-for="(v,k) in CTYPE" :label="k" border>{{v}}</el-checkbox>
         </el-checkbox-group>
         <div style="margin: 20px 0; width: 300px;">
             <el-input size="mini" v-model="baseData[TYPEFIELDS.attack]">
@@ -25,8 +25,8 @@
         <div style="margin: 20px 0;" v-if="calculateGroup.indexOf(TYPEFIELDS.healthPoint) > -1">
             <el-checkbox v-model="hutaoEquivalent" border size="mini">胡桃E技能攻击等效到大生命</el-checkbox>
             <template v-if="hutaoEquivalent">
-              <el-radio v-model="hutaoElevel" label="10">10级E</el-radio>
-              <el-radio v-model="hutaoElevel" label="13">13级E</el-radio>
+              <el-radio style="margin: 10px 0;" v-model="hutaoElevel" label="10">10级E</el-radio>
+              <el-radio style="margin: 10px 0;" v-model="hutaoElevel" label="13">13级E</el-radio>
             </template>
             <div style="margin: 20px 0; width: 300px;">
                 <el-input size="mini" v-model="baseData[TYPEFIELDS.healthPoint]">
@@ -287,7 +287,7 @@
                         }
                     }
 
-                    if (this.hutaoEquivalent) {
+                    if (this.calculateGroup.indexOf(TYPEFIELDS.healthPoint) > -1 && this.hutaoEquivalent) {
                         let maxhpAtk = bData[TYPEFIELDS.healthPoint] * (MAXUP[TYPEFIELDS.healthPointPercentage] / 100) * HUTAOE[this.hutaoElevel];
                         resultObj[TYPEFIELDS.healthPointEquivalentPercentage] = mData[TYPEFIELDS.attack] / maxhpAtk;
                     }
